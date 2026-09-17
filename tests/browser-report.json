@@ -26,6 +26,18 @@
       "pass": true
     },
     {
+      "name": "Ignition has a bounded, visible transient independent of sustained boost",
+      "pass": true
+    },
+    {
+      "name": "GPU receives active material surge uniforms",
+      "pass": true
+    },
+    {
+      "name": "Paused ignition keeps its exact phase and light level",
+      "pass": true
+    },
+    {
       "name": "Paper lands, chars and contributes a local fire source",
       "pass": true
     },
@@ -47,6 +59,74 @@
     },
     {
       "name": "Pause freezes both flame time and all fuel bodies",
+      "pass": true
+    },
+    {
+      "name": "middle drag does not pick up fuel in feed",
+      "pass": true
+    },
+    {
+      "name": "middle drag orbits without throwing or gusting in feed",
+      "pass": true
+    },
+    {
+      "name": "right drag does not pick up fuel in feed",
+      "pass": true
+    },
+    {
+      "name": "right drag orbits without throwing or gusting in feed",
+      "pass": true
+    },
+    {
+      "name": "middle drag does not pick up fuel in wind",
+      "pass": true
+    },
+    {
+      "name": "middle drag orbits without throwing or gusting in wind",
+      "pass": true
+    },
+    {
+      "name": "right drag does not pick up fuel in wind",
+      "pass": true
+    },
+    {
+      "name": "right drag orbits without throwing or gusting in wind",
+      "pass": true
+    },
+    {
+      "name": "middle drag does not pick up fuel in orbit",
+      "pass": true
+    },
+    {
+      "name": "middle drag orbits without throwing or gusting in orbit",
+      "pass": true
+    },
+    {
+      "name": "right drag does not pick up fuel in orbit",
+      "pass": true
+    },
+    {
+      "name": "right drag orbits without throwing or gusting in orbit",
+      "pass": true
+    },
+    {
+      "name": "Native context menu and middle-button auxiliary action are suppressed",
+      "pass": true
+    },
+    {
+      "name": "Left drag still lifts fuel after secondary orbit",
+      "pass": true
+    },
+    {
+      "name": "A chorded left/right drag cancels the throw and does not re-arm it",
+      "pass": true
+    },
+    {
+      "name": "Focus loss cancels a secondary orbit without leaving a stuck cursor",
+      "pass": true
+    },
+    {
+      "name": "A stationary right click never injects a wind tap",
       "pass": true
     },
     {
@@ -91,6 +171,14 @@
     },
     {
       "name": "Material sound events leave audio running",
+      "pass": true
+    },
+    {
+      "name": "Ignition schedules a material-specific whoosh",
+      "pass": true
+    },
+    {
+      "name": "Pausing clears active material sound tails",
       "pass": true
     },
     {
@@ -172,7 +260,8 @@
   ],
   "errors": [],
   "notes": [
-    "Local HTTP navigation is blocked by container browser policy; split source is assembled offline for GUI tests. Node tests verify the server routes.",
+    "Split source is assembled offline for GUI tests. Node tests independently verify the HTTP server routes.",
     "Touch is emulated; physical iPhone / Safari was not tested."
-  ]
+  ],
+  "version": "2.1.0"
 }

@@ -10,7 +10,7 @@ precision highp float;
 precision highp sampler3D;
 in vec2 vUV;
 uniform vec2 uResolution;
-uniform float uTime,uFuel,uWind,uExposure;
+uniform float uTime,uFuel,uWind,uExposure,uFlare;
 uniform vec3 uCamera,uForward,uRight,uUp;
 uniform float uShift,uFocal;
 uniform vec4 uTouch;
@@ -37,6 +37,24 @@ vec2 atlasUV(vec3 idx,float z){vec2 tile=vec2(mod(z,uAtlas.x),floor(z/uAtlas.x))
 vec4 sampleField(sampler2D tex,vec3 p){vec3 v=(p-VOL_MIN)/VOL_SIZE;if(any(lessThan(v,vec3(0)))||any(greaterThan(v,vec3(1))))return vec4(0);vec3 id=clamp(v*uGrid-.5,vec3(0),uGrid-1.);float z=floor(id.z);return mix(texture(tex,atlasUV(id,z)),texture(tex,atlasUV(id,min(z+1.,uGrid.z-1.))),fract(id.z));}
 vec3 fromAtlas(){vec2 p=gl_FragCoord.xy-.5;vec2 tile=floor(p/uGrid.xy);return VOL_MIN+(vec3(mod(p,uGrid.xy),tile.x+tile.y*uAtlas.x)+.5)/uGrid*VOL_SIZE;}
 `;
+const surge=`
+uniform int uSurgeCount;
+uniform vec4 uSurgePos[12],uSurgeInfo[12];
+// World-space plumes: wide at their source, then carried upwards.
+// These are not camera-space flashes or spherical explosions.
+vec3 surgeVelocity(vec3 p){
+ vec3 v=vec3(0.);
+ for(int i=0;i<12;i++){
+  if(i>=uSurgeCount)break;
+  vec4 src=uSurgePos[i],info=uSurgeInfo[i];vec3 d=p-src.xyz;
+  float h=max(0.,d.y),width=src.w*(1.15+h*.50);
+  float influence=exp(-dot(d.xz,d.xz)/(width*width))*exp(-h*.64)*smoothstep(-.24,.10,d.y);
+  v.y+=info.x*info.y*influence;
+  v.xz+=d.xz*info.x*influence*.82;
+ }
+ return v;
+}
+`;
 const flow=`
 vec3 velocity(vec3 p){
  float h=max(0.,p.y-.34);vec3 q=p*2.6-vec3(.1,uTime*.82,.17);
@@ -44,6 +62,7 @@ vec3 velocity(vec3 p){
  vec3 curl=vec3(sin(q.y*1.9+sin(q.z*1.2)),sin(q.z*1.7+sin(q.x)),sin(q.x*1.3+sin(q.y*1.7)));
  vec3 fine=noise3(p*7.-vec3(0,uTime*3.,0))-.5;
  vec3 v=curl*vec3(.52,.30,.49)+fine*.35;
+ v+=surgeVelocity(p);
  v.y+=1.30+.30*exp(-h)+.16*sin(uTime*2.7);
  v.xz-=p.xz*.12;
  v.x+=uWind*(.8+h*.32);v.z+=uWind*.16;
@@ -63,7 +82,7 @@ float source(vec3 p){
 }
 `;
 const simulation=`#version 300 es
-${common}${atlas}${flow}
+${common}${atlas}${surge}${flow}
 uniform float uDt;
 uniform int uInit,uPass;
 uniform sampler2D uAdvected;
@@ -98,6 +117,25 @@ void main(){
   heat=max(heat,envelope*min(1.55,info.x*1.55)*tongues);
   smoke+=uDt*envelope*info.y*3.;
  }
+ // A short material-specific release of volatiles; the thermal field
+ // retains and advects the plume after this smooth source has faded.
+ for(int i=0;i<12;i++){
+  if(i>=uSurgeCount)break;
+  vec4 src=uSurgePos[i],info=uSurgeInfo[i];
+  float width=src.w*(1.+info.x*.34);
+  vec3 d=p-src.xyz-vec3(0.,.06+info.z*.13,0.);
+  d.xz+=(noise3(p*9.-vec3(0.,uTime*4.,0.)).xz-.5)*.13;
+  d/=vec3(width,.22+info.x*.12,width*.91);
+  float shell=exp(-dot(d,d)*1.45),ripple=.85+.15*sin(p.y*22.-uTime*13.+float(i)*8.);
+  if(info.w>.5){
+   heat=max(heat,shell*min(2.05,info.x*1.90)*ripple);
+   smoke+=uDt*shell*info.x*.12;
+  }else{
+   // Landing only entrains and exposes the fire already present.
+   heat+=uDt*shell*info.x*min(heat,.7)*1.1;
+  }
+ }
+ heat=min(heat,2.15);
  if(uInit==1){
   float h=max(0.,p.y-.45);vec3 q=p;q.xz+=vec2(sin(p.y*3.4),cos(p.y*2.8))*.12;
   float n=fbm(q*5.-vec3(0,2.,0));
@@ -159,7 +197,7 @@ float shadow(vec3 p,vec3 light){
 }
 `;
 const scene=`#version 300 es
-${common}${atlas}${geometry}
+${common}${atlas}${geometry}${surge}
 uniform int uObjectCount;
 uniform vec4 uObjectPos[13];
 out vec4 outColor;
@@ -176,6 +214,17 @@ vec3 lightSurface(vec3 p,vec3 n,vec3 rd,vec3 albedo,float rough,float metal,floa
   float spec=pow(ndh,mix(140.,8.,rough))*(1.-rough*.45);
   vec3 F=mix(vec3(.045),albedo,metal)+(1.-mix(vec3(.045),albedo,metal))*pow(1.-max(dot(-rd,H),0.),5.);
   result+=(albedo*(1.-metal)*ndl*.55+F*spec*ndl*2.5)*radiance*sh;
+ }
+ // The same local flare illuminates the iron, ash and logs, not the UI.
+ for(int i=0;i<12;i++){
+  if(i>=uSurgeCount)break;
+  vec3 lp=uSurgePos[i].xyz+vec3(0.,.34,0.),L=lp-p;
+  float d2=dot(L,L);L=normalize(L);vec3 H=normalize(L-rd);
+  float ndl=max(dot(n,L),0.),sh=1.;
+  if(material>.5&&ndl>.02)sh=shadow(p+n*.015,lp);
+  vec3 rad=vec3(1.,.32,.075)*uSurgeInfo[i].x*2.6/(d2+.48);
+  float spec=pow(max(dot(n,H),0.),mix(140.,8.,rough));
+  result+=(albedo*(1.-metal)*ndl*.55+mix(vec3(.045),albedo,metal)*spec*ndl*2.)*rad*sh;
  }
  // Very faint cool fill; it exposes only the shape of unlit charcoal and iron.
  vec3 cool=normalize(vec3(-2.,4.,-3.));float facing=max(0.,dot(n,cool));
@@ -326,7 +375,7 @@ vec3 aces(vec3 x){return clamp((x*(2.51*x+.03))/(x*(2.43*x+.59)+.14),0.,1.);}
 void main(){
  float heat=texture(uImage,vUV).a;
  vec3 n=noise3(vec3(vUV*vec2(28.,41.),uTime*.7));
- vec2 offset=(n.rg-.5)*heat*vec2(.004,.0015)*(.75+uFuel*.25);
+ vec2 offset=(n.rg-.5)*heat*vec2(.004,.0015)*(.75+uFuel*.25+uFlare*.85);
  vec3 base=texture(uImage,vUV+offset).rgb;
  vec3 bloom=texture(uBloom,vUV+offset).rgb;
  vec3 wide=texture(uBloomWide,vUV).rgb;
@@ -360,6 +409,6 @@ void main(){vec2 uv=gl_FragCoord.xy/uResolution;vec2 screen=uv*2.-1.;screen.x=sc
  vec2 q=gl_PointCoord*2.-1.;float r=length(q);float core=exp(-r*r*8.);float a=core*(1.-smoothstep(.3,1.,r))*vLife;
  if(vKind>.5){float edge=1.-smoothstep(.35,.87,max(abs(q.x+q.y*.25),abs(q.y)));float alpha=edge*vLife*.65;outColor=vec4(vec3(.18,.145,.105)*alpha,alpha);}
  else outColor=vec4(vec3(1.,.16+.3*vLife,.008+.06*vLife)*a*(2.+vSeed*5.),0.);}`;
-I.shaderParts={common,atlas,geometry};
+I.shaderParts={common,atlas,geometry,surge};
 I.shaders={vertex,simulation,resample,scene,volume,blur,composite,sparkVertex,sparkFragment};
 })(globalThis.Ignis=globalThis.Ignis||{});

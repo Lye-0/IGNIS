@@ -21,3 +21,7 @@ body.feed-mode #scene{cursor:crosshair}.bottom .controls{gap:7px}.mode{padding:9
 @media(max-height:540px) and (min-width:761px){.topbar{top:18px}.intro{top:23%;}.intro h1{font-size:28px;margin:14px 0}.intro-jp{font-size:9px}.intro .eyebrow{font-size:6px}.material-tray{bottom:21%;width:260px}.material-card{min-height:55px;padding:6px 0}.material-card canvas{height:26px}.material-name{font-size:8px}.tray-heading{display:none}.tray-help,.burn-status{display:none}.material-description{font-size:7px;margin-top:3px}.material-description button{font-size:8px}.bottom{bottom:12px;padding-top:12px}.bottom .gesture{display:none}.bottom .controls{left:69%}.settings{bottom:75px;max-height:calc(100dvh - 100px)}}
 @media(max-width:360px){.bottom .controls{gap:3px}.mode{padding:9px 8px;gap:4px}.mode svg{width:12px}.icon-button{width:27px}.material-name{font-size:8px}.tray-english{letter-spacing:1px}}
 @media(prefers-reduced-motion:reduce){.material-card{transition:none}}
+
+/* Orbit overrides feed / air cursors without changing the selected mode. */
+body.orbit-dragging #scene{cursor:grabbing}
+body.orbit-dragging #wind-cursor{opacity:0}

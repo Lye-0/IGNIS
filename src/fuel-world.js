@@ -17,9 +17,30 @@ const LOGS=[
  {c:[.29,.49,-.02],axis:normalize([.56*.995,.10,.828*.995]),length:.64,r:.12},
  {c:[.05,.62,-.13],axis:normalize([.986*.98,.199,-.166*.98]),length:.51,r:.085}
 ].map(l=>({...l,a:sub(l.c,mul(l.axis,l.length)),b:add(l.c,mul(l.axis,l.length))}));
+// One shared, smooth envelope for the GPU plume and the synthesized whoosh.
+// All response values are artistic tuning, not measured combustion constants.
+function responseEnvelope(age,attack,decay){
+ if(age<=0||!Number.isFinite(age)||!(attack>0)||!(decay>0))return 0;
+ if(age<attack){const x=age/attack;return x*x*(3-2*x);}
+ const t=(age-attack)/decay;return (1+t)*Math.exp(-t);
+}
+function hearthExposure(position,fuel=1){
+ const [x,y,z]=position,r=Math.hypot(x,z);
+ return Math.exp(-r*r*1.7)*clamp(1-(y-.5)*.44,0,1)*clamp((1.14-r)*4,0,1)*Math.max(0,fuel);
+}
 const STAGES={flight:'投げ込み中',warming:'着火を待つ',burning:'燃焼中',ember:'熾火',ash:'灰になりました',cold:'火のそばで休んでいます'};
 class FuelWorld{
- constructor({seed=41231,maxBodies=12,onEvent=()=>{}}={}){this.rng=random(seed);this.maxBodies=maxBodies;this.onEvent=onEvent;this.bodies=[];this.nextId=1;this.time=0;this.accumulator=0;this.boost=0;this.sources=new Float32Array(12*4);this.sourceInfo=new Float32Array(12*4);this.sourceCount=0;this.shadowPositions=new Float32Array(13*4);this.shadowCount=0;this.lastBody=null;this.held=null;}
+ constructor({seed=41231,maxBodies=12,onEvent=()=>{}}={}){this.rng=random(seed);this.maxBodies=maxBodies;this.onEvent=onEvent;this.bodies=[];this.nextId=1;this.time=0;this.accumulator=0;this.boost=0;this.sources=new Float32Array(12*4);this.sourceInfo=new Float32Array(12*4);this.sourceCount=0;this.shadowPositions=new Float32Array(13*4);this.shadowCount=0;this.lastBody=null;this.held=null;this.surges=[];this.surgePositions=new Float32Array(48);this.surgeInfo=new Float32Array(48);this.surgeCount=0;this.flare=0;}
+ addSurge(body,type,exposure=1,strength=1){
+  if(exposure<=.02)return null;
+  const profile=body.material.response,impact=type==='impact';
+  const response={body,type,age:0,attack:impact?.065:profile.attack,decay:impact?.13:profile.decay,
+   peak:(impact?profile.impact*strength:profile.strength)*clamp(exposure,.12,1.12),
+   spread:profile.spread,lift:impact?.85:profile.lift};
+  // An impact moves existing hot gas; only ignition supplies new fuel heat.
+  if(this.surges.length>=12)this.surges.shift();
+  this.surges.push(response);return response;
+ }
  make(kind){
   const m=I.materials[kind];if(!m)throw new Error('Unknown fuel material: '+kind);
   const seed=Math.floor(this.rng()*1e8),s=.90+this.rng()*.17;
@@ -71,14 +92,12 @@ class FuelWorld{
   }
  }
  thermal(b,dt,state){
-  const [x,y,z]=b.position,r=Math.hypot(x,z);
-  const hearth=Math.exp(-r*r*1.7)*clamp(1-(y-.5)*.44,0,1)*clamp((1.14-r)*4,0,1);
-  const exposure=hearth*(state.fuel||1);
+  const exposure=hearthExposure(b.position,state.fuel??1);
   if(b.stage==='flight'&&b.contact)b.stage='warming';
   if(b.progress===0&&b.burnAge===0){
    if(b.contact)b.heat=clamp(b.heat+dt*(exposure/b.material.ignition-(1-exposure)*.07),0,1);
    if(b.contact&&b.heat<.05&&b.age>8)b.stage='cold';
-   if(b.heat>=.999){b.stage='burning';b.burnAge=.0001;this.onEvent({type:'ignite',body:b});}
+   if(b.heat>=.999){b.stage='burning';b.burnAge=.0001;const surge=this.addSurge(b,'ignite',exposure);this.onEvent({type:'ignite',body:b,strength:surge?.peak||0});}
   }
   if(b.stage==='burning'){
    b.burnAge+=dt*clamp(.88+exposure*.12+Math.abs(state.wind||0)*.07,.8,1.18);
@@ -105,6 +124,8 @@ class FuelWorld{
  }
  step(dt,state){
   this.time+=dt;
+  for(const s of this.surges)s.age+=dt;
+  this.surges=this.surges.filter(s=>s.age<s.attack+s.decay*10&&this.bodies.includes(s.body));
   for(const b of this.bodies){
    b.age+=dt;const oldContact=b.contact;b.contact=false;
    if(b.awake){
@@ -117,7 +138,7 @@ class FuelWorld{
     const damping=Math.exp(-dt*b.material.drag);for(let k=0;k<3;k++){b.velocity[k]*=damping;b.position[k]+=b.velocity[k]*dt;b.angular[k]=clamp(b.angular[k]*Math.exp(-dt*(oldContact?3.6:.35)),-12,12);}
     b.quaternion=integrateQuaternion(b.quaternion,b.angular,dt);
     const speed=Math.hypot(...b.velocity);this.collide(b);
-    if(b.contact&&!b.impact&&b.age>.09){b.impact=true;this.onEvent({type:'impact',body:b,strength:clamp(speed/4,.18,1)});}
+    if(b.contact&&!b.impact&&b.age>.09){b.impact=true;const strength=clamp(speed/4,.18,1),exposure=hearthExposure(b.position,state.fuel??1);this.addSurge(b,'impact',exposure,strength);this.onEvent({type:'impact',body:b,strength,exposure});}
     if(b.contact&&Math.hypot(...b.velocity)<.13&&Math.hypot(...b.angular)<.36)b.sleep+=dt;else b.sleep=0;
     if(b.sleep>.7){b.awake=false;b.velocity=[0,0,0];b.angular=[0,0,0];}
    }else b.contact=true;
@@ -135,12 +156,25 @@ class FuelWorld{
    if(this.shadowCount<13)this.shadowPositions.set([...b.position,b.material.radius*Math.max(...b.scale)],this.shadowCount++*4);
   }
   if(this.held&&this.shadowCount<13)this.shadowPositions.set([...this.held.position,this.held.material.radius],this.shadowCount++*4);
+  this.surgeCount=0;this.surgePositions.fill(0);this.surgeInfo.fill(0);let pulse=0;
+  // Soft saturation preserves individual responses without runaway stacked heat.
+  let sum=0;for(const s of this.surges)sum+=s.peak*responseEnvelope(s.age,s.attack,s.decay);
+  const gain=sum>1.65?1.65/sum:1;
+  for(const s of this.surges){
+   const strength=s.peak*responseEnvelope(s.age,s.attack,s.decay)*gain;
+   if(strength<.0001||this.surgeCount>=12)continue;
+   const i=this.surgeCount++*4,phase=clamp(s.age/(s.attack+s.decay*2),0,1);
+   this.surgePositions.set([s.body.position[0],s.body.position[1]+.06,s.body.position[2],s.spread],i);
+   this.surgeInfo.set([strength,s.lift,phase,s.type==='ignite'?1:0],i);
+   pulse+=strength*(s.type==='ignite'?1:.3);
+  }
+  this.flare=.44*(1-Math.exp(-pulse*.85));
   const target=.40*(1-Math.exp(-total*.8));if(dt>0)this.boost=mix(this.boost,target,1-Math.exp(-dt*2.8));
   return this.boost;
  }
  status(){const b=this.lastBody;if(!b)return null;return {label:b.material.label,stage:STAGES[b.stage],progress:b.progress,id:b.id};}
- clear(){this.bodies=[];this.held=null;this.lastBody=null;this.boost=0;this.sources.fill(0);this.sourceInfo.fill(0);this.sourceCount=0;this.shadowPositions.fill(0);this.shadowCount=0;this.accumulator=0;}
- info(){return {count:this.bodies.length,max:this.maxBodies,boost:this.boost,sources:this.sourceCount,bodies:this.bodies.map(b=>({id:b.id,kind:b.kind,stage:b.stage,position:b.position.slice(),progress:b.progress,heat:b.heat,power:b.power,age:b.age,awake:b.awake}))};}
+ clear(){this.bodies=[];this.held=null;this.lastBody=null;this.boost=0;this.sources.fill(0);this.sourceInfo.fill(0);this.sourceCount=0;this.shadowPositions.fill(0);this.shadowCount=0;this.accumulator=0;this.surges=[];this.surgeCount=0;this.flare=0;this.surgePositions.fill(0);this.surgeInfo.fill(0);}
+ info(){return {count:this.bodies.length,max:this.maxBodies,boost:this.boost,sources:this.sourceCount,flare:this.flare,surges:this.surgeCount,bodies:this.bodies.map(b=>({id:b.id,kind:b.kind,stage:b.stage,position:b.position.slice(),progress:b.progress,heat:b.heat,power:b.power,age:b.age,awake:b.awake}))};}
 }
-I.FuelWorld=FuelWorld;I.fuelMath={rotate,integrateQuaternion,logs:LOGS};
+I.fuelResponse={envelope:responseEnvelope,exposure:hearthExposure};I.FuelWorld=FuelWorld;I.fuelMath={rotate,integrateQuaternion,logs:LOGS};
 })(globalThis.Ignis=globalThis.Ignis||{});

@@ -8,7 +8,7 @@ from playwright.sync_api import sync_playwright
 import json,os,shutil,time
 ROOT=Path(__file__).resolve().parents[1]
 OUT=ROOT/'.test-output';OUT.mkdir(exist_ok=True)
-SCRIPTS=['math','materials','fuel-world','shaders','renderer','fuel-renderer','audio','app']
+SCRIPTS=['math','materials','fuel-world','shaders','renderer','fuel-renderer','audio','input','app']
 def document():
  text=(ROOT/'index.html').read_text()
  text=text.replace('<link rel="stylesheet" href="styles.css">','<style>'+(ROOT/'styles.css').read_text()+'</style>')
@@ -17,7 +17,7 @@ def document():
   if name=='app':script=script.replace("capture=params.has('capture')","capture=true")
   text=text.replace(f'<script defer src="src/{name}.js"></script>','').replace('</body>',f'<script>{script}</script></body>')
  return text
-report={'browser':'Chromium / WebGL 2 / SwiftShader','tests':[],'errors':[],'notes':['Local HTTP navigation is blocked by container browser policy; split source is assembled offline for GUI tests. Node tests verify the server routes.','Touch is emulated; physical iPhone / Safari was not tested.']}
+report={'browser':'Chromium / WebGL 2 / SwiftShader','tests':[],'errors':[],'notes':['Split source is assembled offline for GUI tests. Node tests independently verify the HTTP server routes.','Touch is emulated; physical iPhone / Safari was not tested.']}
 def save():
  text=json.dumps(report,ensure_ascii=False,indent=2)
  (OUT/'browser-report.json').write_text(text)
@@ -51,6 +51,12 @@ with sync_playwright() as p:
  check('Release launches one solid body and clears held state',page.evaluate('__IGNIS__.world.bodies.length===1 && !__IGNIS__.world.held && __IGNIS__.world.bodies[0].stage==="flight"'))
  step(page,.03)
  check('New throw produces no premature combustion source',page.evaluate('__IGNIS__.world.sourceCount===0'))
+ page.evaluate('(()=>{const w=__IGNIS__.world;for(let i=0;i<1800&&w.bodies[0].stage!=="burning";i++)w.update(1/120,__IGNIS__.state);for(let i=0;i<24;i++)w.update(1/120,__IGNIS__.state)})()');step(page,.02)
+ check('Ignition has a bounded, visible transient independent of sustained boost',page.evaluate('__IGNIS__.world.flare>0 && __IGNIS__.world.flare<.44 && __IGNIS__.world.boost<.401'))
+ check('GPU receives active material surge uniforms',page.evaluate('(()=>{const p=__IGNIS__.renderer.programs.simulation;return p.gl.getUniform(p.id,p.uniforms.get("uSurgeCount").location)>0})()'))
+ page.screenshot(path=str(OUT/'ignition-pulse.png'),timeout=60000)
+ before=page.evaluate('JSON.stringify([__IGNIS__.world.flare,Array.from(__IGNIS__.world.surgeInfo)])');page.click('#pause');step(page,.05)
+ check('Paused ignition keeps its exact phase and light level',page.evaluate('JSON.stringify([__IGNIS__.world.flare,Array.from(__IGNIS__.world.surgeInfo)])')==before);page.click('#pause')
  advance(page,7);step(page)
  check('Paper lands, chars and contributes a local fire source',page.evaluate('__IGNIS__.world.bodies[0].stage==="burning" && __IGNIS__.world.bodies[0].progress>0 && __IGNIS__.world.sourceCount===1 && __IGNIS__.world.boost>0'))
  check('Simulation receives the new GPU source uniform',page.evaluate('(()=>{const p=__IGNIS__.renderer.programs.simulation;return p.gl.getUniform(p.id,p.uniforms.get("uFeedCount").location)===1})()'))
@@ -63,7 +69,31 @@ with sync_playwright() as p:
  check('Material-specific burn rates differ',page.evaluate('__IGNIS__.world.bodies.find(b=>b.kind==="wood").progress<__IGNIS__.world.bodies.find(b=>b.kind==="paper").progress'))
  page.click('#pause');before=page.evaluate('JSON.stringify({time:__IGNIS__.state.time,world:__IGNIS__.world.info()})');step(page,.05)
  check('Pause freezes both flame time and all fuel bodies',page.evaluate('JSON.stringify({time:__IGNIS__.state.time,world:__IGNIS__.world.info()})')==before)
- page.click('#pause');page.click('#orbit-mode');yaw=page.evaluate('__IGNIS__.cameraGoal.yaw')
+ page.click('#pause')
+ # v2.1: secondary mouse buttons route directly to orbit in every mode.
+ page.evaluate("document.getElementById('scene').addEventListener('contextmenu',e=>window.__contextPrevented=e.defaultPrevented);document.getElementById('scene').addEventListener('auxclick',e=>window.__auxPrevented=e.defaultPrevented)")
+ for mode in ['feed','wind','orbit']:
+  page.click('#'+mode+'-mode')
+  for button in ['middle','right']:
+   before=page.evaluate('({yaw:__IGNIS__.cameraGoal.yaw,count:__IGNIS__.world.bodies.length,touch:JSON.stringify(__IGNIS__.state.touch)})')
+   page.mouse.move(890,390);page.mouse.down(button=button)
+   check(button+' drag does not pick up fuel in '+mode,page.evaluate('!__IGNIS__.world.held'))
+   page.mouse.move(972,408,steps=4);page.mouse.up(button=button)
+   after=page.evaluate('({yaw:__IGNIS__.cameraGoal.yaw,count:__IGNIS__.world.bodies.length,touch:JSON.stringify(__IGNIS__.state.touch),mode:__IGNIS__.state.mode})')
+   check(button+' drag orbits without throwing or gusting in '+mode,abs(after['yaw']-(before['yaw']-82*.0045))<1e-8 and after['count']==before['count'] and after['touch']==before['touch'] and after['mode']==mode)
+ check('Native context menu and middle-button auxiliary action are suppressed',page.evaluate('window.__contextPrevented && window.__auxPrevented'))
+ page.click('#feed-mode');count=page.evaluate('__IGNIS__.world.bodies.length')
+ page.mouse.move(880,400);page.mouse.down(button='left');page.mouse.move(900,390)
+ check('Left drag still lifts fuel after secondary orbit',page.evaluate('!!__IGNIS__.world.held'))
+ page.mouse.down(button='right');page.mouse.move(932,400);page.mouse.up(button='right');page.mouse.move(955,390);page.mouse.up(button='left')
+ check('A chorded left/right drag cancels the throw and does not re-arm it',page.evaluate('__IGNIS__.world.bodies.length')==count and page.evaluate('!__IGNIS__.world.held'))
+ page.mouse.move(880,400);page.mouse.down(button='middle');page.mouse.move(905,405)
+ page.evaluate('window.dispatchEvent(new Event("blur"))');yaw=page.evaluate('__IGNIS__.cameraGoal.yaw');page.mouse.move(945,405);page.mouse.up(button='middle')
+ check('Focus loss cancels a secondary orbit without leaving a stuck cursor',page.evaluate('__IGNIS__.cameraGoal.yaw')==yaw and page.evaluate('!document.body.classList.contains("orbit-dragging")'))
+ page.click('#wind-mode');before=page.evaluate('JSON.stringify(__IGNIS__.state.touch)')
+ page.mouse.click(900,400,button='right')
+ check('A stationary right click never injects a wind tap',page.evaluate('JSON.stringify(__IGNIS__.state.touch)')==before)
+ page.click('#orbit-mode');yaw=page.evaluate('__IGNIS__.cameraGoal.yaw')
  page.mouse.move(1020,400);page.mouse.down();page.mouse.move(1110,410,steps=4);page.mouse.up()
  check('Orbit remains available and keeps the original direction',page.evaluate('__IGNIS__.cameraGoal.yaw')<yaw)
  page.click('#wind-mode');page.mouse.move(845,370);page.mouse.down();page.mouse.move(985,375,steps=4);page.mouse.up()
@@ -78,8 +108,10 @@ with sync_playwright() as p:
  check('Clear removes added bodies and local sources',page.evaluate('__IGNIS__.world.bodies.length===0 && __IGNIS__.world.sourceCount===0 && __IGNIS__.world.boost===0'))
  page.click('#close-settings');page.click('#sound');page.wait_for_timeout(100)
  check('Sound starts only after its button is pressed',page.evaluate('__IGNIS__.audio.enabled && __IGNIS__.audio.context.state==="running"'))
- page.click('#quick-throw');advance(page,3);step(page)
+ page.click('#quick-throw');page.evaluate('(()=>{for(let i=0;i<1800&&__IGNIS__.world.bodies[0].stage!=="burning";i++)__IGNIS__.world.update(1/120,__IGNIS__.state)})()');step(page)
  check('Material sound events leave audio running',page.evaluate('__IGNIS__.audio.context.state==="running"'))
+ check('Ignition schedules a material-specific whoosh',page.evaluate('__IGNIS__.audio.whooshes>0'))
+ page.click('#pause');check('Pausing clears active material sound tails',page.evaluate('__IGNIS__.audio.transients.size===0'));page.click('#pause')
  page.click('#sound');check('Sound stops scheduling after toggle off',page.evaluate('!__IGNIS__.audio.enabled && __IGNIS__.audio.timer===null'))
  page.click('#immersive');check('Immersive mode disables hidden UI focus targets',page.evaluate('document.body.classList.contains("immersive") && [...document.querySelectorAll(".ui")].every(x=>x.inert)'))
  page.keyboard.press('Escape');check('Escape restores UI',page.evaluate('!document.body.classList.contains("immersive")'))

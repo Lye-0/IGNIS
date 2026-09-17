@@ -30,7 +30,7 @@ void main(){
  gl_Position=vec4(xy,z,depth);vUV=vec2(0);
 }`;
 const fragment=`#version 300 es
-${I.shaderParts.common}${I.shaderParts.atlas}${I.shaderParts.geometry}
+${I.shaderParts.common}${I.shaderParts.atlas}${I.shaderParts.geometry}${I.shaderParts.surge}
 uniform sampler2D uStaticScene;
 uniform float uBurn,uHeat,uGlow,uPower,uSeed,uAsh;
 uniform highp int uKind;
@@ -94,6 +94,12 @@ void main(){
   float sh=shadow(p+n*.018,lp);
   color+=base*radiance*(ndl*.55+transmitted)*sh;
   color+=vec3(.026)*pow(max(dot(n,H),0.),18.)*radiance*ndl*sh;
+ }
+ for(int i=0;i<12;i++){
+  if(i>=uSurgeCount)break;
+  vec3 lp=uSurgePos[i].xyz+vec3(0.,.32,0.),d=lp-p;float d2=dot(d,d);vec3 L=normalize(d);
+  float ndl=max(0.,dot(n,L)),transmitted=uKind<2?pow(max(0.,dot(-n,L)),2.)*.09*(1.-burned):0.;
+  color+=base*vec3(1.,.32,.075)*uSurgeInfo[i].x*2.6/(d2+.48)*(ndl*.55+transmitted)*shadow(p+n*.018,lp);
  }
  vec3 fill=normalize(vec3(-2.,4.,3.));color+=base*vec3(.15,.17,.19)*max(0.,dot(n,fill));
  float hotEdge=fringe*uPower*(1.-ashiness);

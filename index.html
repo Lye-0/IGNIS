@@ -15,6 +15,7 @@
   <script defer src="src/renderer.js"></script>
   <script defer src="src/fuel-renderer.js"></script>
   <script defer src="src/audio.js"></script>
+  <script defer src="src/input.js"></script>
   <script defer src="src/app.js"></script>
 </head>
 <body>
@@ -69,7 +70,7 @@
     <div class="controls" role="toolbar" aria-label="鑑賞操作">
       <div class="mode-switch" role="group" aria-label="操作モード">
         <button id="feed-mode" class="mode active" aria-pressed="true" title="投げ入れるモード"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m3 15 4 2 5-3-3-5-5 1ZM10 7c2-4 4-4 7-4m-3-2 3 2-1 3"/></svg><span>投げる</span></button>
-        <button id="orbit-mode" class="mode" aria-pressed="false" title="視点モード"><svg viewBox="0 0 20 20" aria-hidden="true"><ellipse cx="10" cy="10" rx="8" ry="4" transform="rotate(-30 10 10)"/><circle cx="10" cy="10" r="2"/></svg><span>視点</span></button>
+        <button id="orbit-mode" class="mode" aria-pressed="false" title="視点モード（中・右ボタンドラッグは全モードで視点回転）"><svg viewBox="0 0 20 20" aria-hidden="true"><ellipse cx="10" cy="10" rx="8" ry="4" transform="rotate(-30 10 10)"/><circle cx="10" cy="10" r="2"/></svg><span>視点</span></button>
         <button id="wind-mode" class="mode" aria-pressed="false" title="気流モード"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2 7h10c5 0 5-6 1-5M2 11h14c4 0 4 5 0 5M2 15h6"/></svg><span>気流</span></button>
       </div>
       <span class="control-divider"></span>
