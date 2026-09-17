@@ -4,33 +4,51 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#080909">
-  <meta name="description" content="IGNIS — ただ、火を見つめる。炎、煙、熾火と熱気を鑑賞する、インタラクティブな3D作品。">
-  <title>IGNIS — ただ、火を見つめる。</title>
+  <meta name="description" content="IGNIS — 火を育てる。紙や木片を投げ入れ、燃焼・煙・熾火を鑑賞する、インタラクティブな3D作品。">
+  <title>IGNIS — 火を育てる。</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%230b0b0b'/%3E%3Cpath d='M21 5C25 15 15 17 24 23C29 18 28 15 28 15C39 31 21 40 13 31C5 23 19 19 21 5' fill='%23ec8b48'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="styles.css">
   <script defer src="src/math.js"></script>
+  <script defer src="src/materials.js"></script>
+  <script defer src="src/fuel-world.js"></script>
   <script defer src="src/shaders.js"></script>
   <script defer src="src/renderer.js"></script>
+  <script defer src="src/fuel-renderer.js"></script>
   <script defer src="src/audio.js"></script>
   <script defer src="src/app.js"></script>
 </head>
 <body>
-  <canvas id="scene" aria-label="立体的な薪の炎。ドラッグで視点を回転、ホイールまたはピンチで拡大。気流モードではドラッグで風を送れます。" tabindex="0"></canvas>
+  <canvas id="scene" aria-label="立体的な薪の炎。素材を選び、火をタップするかドラッグして投げ入れます。視点モードで回転、気流モードで風を送れます。" tabindex="0"></canvas>
   <div id="loading" class="loading" role="status"><span class="loading-ember"></span><span>火を灯しています</span></div>
   <div id="error" class="error-card" role="alert" hidden><p class="eyebrow">RENDERING UNAVAILABLE</p><h2>炎を描画できませんでした。</h2><p id="error-detail"></p><button id="retry">再読み込み</button></div>
   <header class="topbar ui">
     <a class="wordmark" href="#" id="home" aria-label="IGNIS — 視点を初期位置に戻す"><svg viewBox="0 0 20 24" aria-hidden="true"><path d="M11 1C15 9 6 11 12 16C16 13 15 9 15 9C24 21 12 27 5 21C-2 15 9 10 11 1Z"/></svg><span>IGNIS</span></a>
-    <div class="edition"><span class="edition-line"></span>A STUDY OF FIRE<span class="edition-num">№ 001</span></div>
+    <div class="edition"><span class="edition-line"></span>THE ART OF TENDING<span class="edition-num">№ 002</span></div>
     <button class="text-button" id="immersive" aria-label="UIを隠して鑑賞する"><span>鑑賞モード</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 3H3v4M13 3h4v4M3 13v4h4m10-4v4h-4"/></svg></button>
   </header>
   <main class="intro ui" aria-label="作品について">
-    <div class="eyebrow"><span class="tiny-line"></span>THE LIVING ELEMENT</div>
-    <h1>Nothing stays.<br><em>Everything burns.</em></h1>
-    <p class="intro-jp">ただ、火を見つめる。</p>
-    <p class="intro-caption">生まれ、揺らぎ、ほどけていく。<br>二度と同じかたちにならない光。</p>
+    <div class="eyebrow"><span class="tiny-line"></span>THE LIVING ELEMENT / II</div>
+    <h1>Feed the flame.<br><em>Watch it change.</em></h1>
+    <p class="intro-jp">ひとつ投げて、火を育てる。</p>
+    <p class="intro-caption">軽い紙。乾いた木。<br>それぞれの、燃え尽きるまで。</p>
     <div class="intro-rule"></div>
     <div class="live-label"><span class="live-dot"></span><span id="live-text">LIVE GENERATIVE FIRE</span></div>
   </main>
+
+  <section id="fuel-tray" class="material-tray ui" aria-label="火に投げ入れる素材">
+    <div class="tray-heading"><span>火に、ひとつ。</span><span class="tray-english">CHOOSE YOUR KINDLING</span></div>
+    <div class="material-grid" role="group" aria-label="素材を選ぶ">
+      <button class="material-card selected" data-material="paper" aria-pressed="true" aria-label="くしゃくしゃの紙を選ぶ" title="くしゃくしゃの紙（1）"><span class="material-index">01</span><canvas aria-hidden="true"></canvas><span class="material-name">くしゃ紙</span></button>
+      <button class="material-card" data-material="cardboard" aria-pressed="false" aria-label="段ボール片を選ぶ" title="段ボール片（2）"><span class="material-index">02</span><canvas aria-hidden="true"></canvas><span class="material-name">段ボール</span></button>
+      <button class="material-card" data-material="twig" aria-pressed="false" aria-label="乾いた小枝を選ぶ" title="乾いた小枝（3）"><span class="material-index">03</span><canvas aria-hidden="true"></canvas><span class="material-name">小枝</span></button>
+      <button class="material-card" data-material="wood" aria-pressed="false" aria-label="割った木片を選ぶ" title="割った木片（4）"><span class="material-index">04</span><canvas aria-hidden="true"></canvas><span class="material-name">木片</span></button>
+    </div>
+    <div class="material-description"><span id="material-note">ふわりと舞い、薄い灰へ。</span><button id="quick-throw" title="選んだ素材を投げ入れる（F）">投げ入れる <span aria-hidden="true">↗</span></button></div>
+    <p class="tray-help">素材をドラッグして火へ。<span>選んで、火をタップしても。</span></p>
+    <div id="burn-status" class="burn-status" role="status" aria-live="polite"><span class="status-dot"></span><span id="burn-status-text">火は、次のひとつを待っています。</span></div>
+  </section>
+  <svg id="throw-guide" aria-hidden="true" hidden><path id="throw-path"/><ellipse id="throw-target" rx="15" ry="5"/></svg>
+  <div id="throw-hint" aria-hidden="true" hidden>離して、火へ。</div>
   <div id="wind-cursor" aria-hidden="true"><span></span></div>
   <aside id="settings" class="settings ui" aria-label="炎の設定" hidden>
     <div class="panel-heading"><span>火のある空間</span><button class="icon-button" id="close-settings" aria-label="設定を閉じる">×</button></div>
@@ -43,13 +61,15 @@
     <div class="panel-divider"></div>
     <label class="select-label" for="quality"><span>描画品質</span><select id="quality"><option value="low">軽量</option><option value="medium" selected>標準</option><option value="high">高精細</option><option value="ultra">最高精細</option></select></label>
     <p class="panel-note">煙・熱気・光は炎に合わせて変化します。<br>負荷が高い場合は品質を下げてください。</p>
+    <button id="clear-fuel" class="reset-button clear-fuel">追加した素材を片づける <span>↺</span></button>
     <button id="reset" class="reset-button">初期状態に戻す <span>↺</span></button>
   </aside>
   <footer class="bottom ui">
-    <div class="observation"><span class="observation-index">01 /</span><div><span class="observation-title">THE HEARTH</span><span class="observation-sub">炎と、そこにある静けさ。</span></div></div>
+    <div class="observation"><span class="observation-index">02 /</span><div><span class="observation-title">THE HEARTH</span><span class="observation-sub">手をかける、火の時間。</span></div></div>
     <div class="controls" role="toolbar" aria-label="鑑賞操作">
       <div class="mode-switch" role="group" aria-label="操作モード">
-        <button id="orbit-mode" class="mode active" aria-pressed="true" title="視点モード"><svg viewBox="0 0 20 20" aria-hidden="true"><ellipse cx="10" cy="10" rx="8" ry="4" transform="rotate(-30 10 10)"/><circle cx="10" cy="10" r="2"/></svg><span>視点</span></button>
+        <button id="feed-mode" class="mode active" aria-pressed="true" title="投げ入れるモード"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m3 15 4 2 5-3-3-5-5 1ZM10 7c2-4 4-4 7-4m-3-2 3 2-1 3"/></svg><span>投げる</span></button>
+        <button id="orbit-mode" class="mode" aria-pressed="false" title="視点モード"><svg viewBox="0 0 20 20" aria-hidden="true"><ellipse cx="10" cy="10" rx="8" ry="4" transform="rotate(-30 10 10)"/><circle cx="10" cy="10" r="2"/></svg><span>視点</span></button>
         <button id="wind-mode" class="mode" aria-pressed="false" title="気流モード"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2 7h10c5 0 5-6 1-5M2 11h14c4 0 4 5 0 5M2 15h6"/></svg><span>気流</span></button>
       </div>
       <span class="control-divider"></span>
@@ -57,7 +77,7 @@
       <button class="icon-button" id="sound" aria-label="焚き火の音をオン" aria-pressed="false" title="音をオン"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 8v4h3l4 3V5L6 8H3Z"/><path id="sound-wave" d="m14 8 4 4m0-4-4 4"/></svg></button>
       <button class="icon-button" id="settings-toggle" aria-label="設定を開く" aria-expanded="false" aria-controls="settings" title="設定"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h7m4 0h3M3 14h2m4 0h8"/><circle cx="12" cy="6" r="2"/><circle cx="7" cy="14" r="2"/></svg></button>
     </div>
-    <div class="gesture"><span id="gesture-main">ドラッグで視点を動かす</span><span id="gesture-sub">SCROLL TO MOVE CLOSER</span></div>
+    <div class="gesture"><span id="gesture-main">素材を選んで、火の中へ</span><span id="gesture-sub">DRAG &amp; RELEASE</span></div>
   </footer>
   <button id="restore-ui" aria-label="操作を表示" hidden><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 7h4V3m10 4h-4V3M3 13h4v4m10-4h-4v4"/></svg></button>
   <div id="toast" role="status" aria-live="polite"></div>

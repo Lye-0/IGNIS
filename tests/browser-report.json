@@ -1,92 +1,104 @@
 {
-  "browser": "Chromium 144 / ANGLE SwiftShader / WebGL 2",
+  "browser": "Chromium / WebGL 2 / SwiftShader",
   "tests": [
     {
-      "name": "Renderer initializes",
+      "name": "WebGL initializes without error overlay",
       "pass": true
     },
     {
-      "name": "Japanese title and controls",
+      "name": "Four selectable materials and a throw action",
       "pass": true
     },
     {
-      "name": "HDR framebuffer and shader status",
+      "name": "Standard quality, sound off, feed mode by default",
       "pass": true
     },
     {
-      "name": "Default standard quality",
+      "name": "Dragging lifts the actual 3D paper",
       "pass": true
     },
     {
-      "name": "Animation time advances",
+      "name": "Release launches one solid body and clears held state",
       "pass": true
     },
     {
-      "name": "Pause freezes simulation time",
+      "name": "New throw produces no premature combustion source",
       "pass": true
     },
     {
-      "name": "Pause accessible state",
+      "name": "Paper lands, chars and contributes a local fire source",
       "pass": true
     },
     {
-      "name": "Orbit drag direction",
+      "name": "Simulation receives the new GPU source uniform",
       "pass": true
     },
     {
-      "name": "Camera never goes below floor",
+      "name": "Selecting a card does not immediately throw",
       "pass": true
     },
     {
-      "name": "Zoom is bounded",
+      "name": "Throw button uses the selected material",
       "pass": true
     },
     {
-      "name": "Pointer injects a local wind impulse",
+      "name": "Material-specific burn rates differ",
       "pass": true
     },
     {
-      "name": "Settings opens with accessible state",
+      "name": "Pause freezes both flame time and all fuel bodies",
       "pass": true
     },
     {
-      "name": "Fuel slider updates state and label",
+      "name": "Orbit remains available and keeps the original direction",
       "pass": true
     },
     {
-      "name": "Wind slider updates state",
+      "name": "Wind interaction remains available",
       "pass": true
     },
     {
-      "name": "Quality low resamples without GL errors",
+      "name": "Settings opens",
       "pass": true
     },
     {
-      "name": "Quality high resamples without GL errors",
+      "name": "Quality low preserves the added objects",
       "pass": true
     },
     {
-      "name": "Quality ultra resamples without GL errors",
+      "name": "Quality high preserves the added objects",
       "pass": true
     },
     {
-      "name": "Quality medium resamples without GL errors",
+      "name": "Quality ultra preserves the added objects",
       "pass": true
     },
     {
-      "name": "Reset restores controls",
+      "name": "Quality medium preserves the added objects",
       "pass": true
     },
     {
-      "name": "User action starts audio context",
+      "name": "Quality changes produce no WebGL errors",
       "pass": true
     },
     {
-      "name": "Sound switch stops crackle scheduling",
+      "name": "Clear removes added bodies and local sources",
       "pass": true
     },
     {
-      "name": "Immersive mode hides UI",
+      "name": "Sound starts only after its button is pressed",
+      "pass": true
+    },
+    {
+      "name": "Material sound events leave audio running",
+      "pass": true
+    },
+    {
+      "name": "Sound stops scheduling after toggle off",
+      "pass": true
+    },
+    {
+      "name": "Immersive mode disables hidden UI focus targets",
       "pass": true
     },
     {
@@ -94,15 +106,23 @@
       "pass": true
     },
     {
-      "name": "Animation remains live",
+      "name": "Number shortcuts select material",
       "pass": true
     },
     {
-      "name": "Renderer initializes",
+      "name": "F throws the selected material",
       "pass": true
     },
     {
-      "name": "Mobile also starts at standard quality",
+      "name": "Animation loop advances after resuming",
+      "pass": true
+    },
+    {
+      "name": "WebGL initializes without error overlay",
+      "pass": true
+    },
+    {
+      "name": "Mobile also defaults to standard quality",
       "pass": true
     },
     {
@@ -110,104 +130,49 @@
       "pass": true
     },
     {
-      "name": "Mobile one-finger orbit direction",
+      "name": "One-finger material drag throws on mobile",
       "pass": true
     },
     {
-      "name": "Mobile pinch zoom",
+      "name": "Touch cancellation does not accidentally throw",
       "pass": true
     },
     {
-      "name": "Mobile settings fits viewport",
+      "name": "Pinch zoom cancels the held item without throwing it",
       "pass": true
     },
     {
-      "name": "Renderer initializes",
+      "name": "One-finger orbit direction is unchanged on mobile",
       "pass": true
     },
     {
-      "name": "tablet fits viewport",
+      "name": "Mobile settings stays within the visible screen",
       "pass": true
     },
     {
-      "name": "Renderer initializes",
+      "name": "Short mobile layout has no overflow",
       "pass": true
     },
     {
-      "name": "landscape fits viewport",
+      "name": "Landscape layout fits the viewport",
       "pass": true
     },
     {
-      "name": "Renderer initializes",
+      "name": "WebGL initializes without error overlay",
       "pass": true
     },
     {
-      "name": "Reduced motion starts paused",
+      "name": "Reduced-motion preference starts paused",
       "pass": true
     },
     {
-      "name": "Unsupported renderer gives a readable error",
-      "pass": true
-    },
-    {
-      "name": "No unexpected browser errors",
+      "name": "No runtime / shader / console errors during integration tests",
       "pass": true
     }
   ],
   "errors": [],
-  "info": {
-    "quality": "medium",
-    "resolution": [
-      1101,
-      688
-    ],
-    "grid": [
-      48,
-      96,
-      48
-    ],
-    "volumeSteps": 104,
-    "frame": 9,
-    "particles": 77,
-    "state": {
-      "time": 4.799666666666656,
-      "fuel": 1,
-      "wind": 0.12,
-      "exposure": 1,
-      "mode": "orbit",
-      "paused": false,
-      "immersive": false,
-      "quality": "medium",
-      "touch": [
-        0,
-        1.1,
-        0,
-        0
-      ],
-      "shift": 0.544,
-      "focal": 1.95
-    },
-    "camera": {
-      "origin": [
-        1.1190228989278452,
-        2.079814523870759,
-        5.069144143394789
-      ],
-      "forward": [
-        -0.21304815615312353,
-        -0.1522748191644834,
-        -0.9651025140409584
-      ],
-      "right": [
-        0.97649015589774,
-        0,
-        -0.21556199905087034
-      ],
-      "up": [
-        -0.03282466442420583,
-        0.9883381908276255,
-        -0.14869486190522657
-      ]
-    }
-  }
+  "notes": [
+    "Local HTTP navigation is blocked by container browser policy; split source is assembled offline for GUI tests. Node tests verify the server routes.",
+    "Touch is emulated; physical iPhone / Safari was not tested."
+  ]
 }

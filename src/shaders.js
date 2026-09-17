@@ -67,6 +67,8 @@ ${common}${atlas}${flow}
 uniform float uDt;
 uniform int uInit,uPass;
 uniform sampler2D uAdvected;
+uniform int uFeedCount;
+uniform vec4 uFeedPos[12],uFeedInfo[12];
 out vec4 outColor;
 void main(){
  vec3 p=fromAtlas();vec3 vel=velocity(p);vec3 prev=p-vel*uDt;
@@ -86,6 +88,16 @@ void main(){
  smoke+=uDt*.38*smoothstep(.04,.16,a.r)*(1.-smoothstep(.2,.4,a.r));
  float s=source(p);heat=max(heat,s*uFuel);
  smoke=max(smoke,s*.025);
+ // Localized, delayed fuel sources. A thrown, unlit object adds no heat.
+ for(int i=0;i<12;i++){
+  if(i>=uFeedCount)break;
+  vec4 src=uFeedPos[i],info=uFeedInfo[i];
+  vec3 d=(p-src.xyz)/vec3(src.w,.19,src.w);
+  float envelope=exp(-dot(d,d)*1.5);
+  float tongues=.88+.12*sin(uTime*9.+float(i)*7.+p.x*19.);
+  heat=max(heat,envelope*min(1.55,info.x*1.55)*tongues);
+  smoke+=uDt*envelope*info.y*3.;
+ }
  if(uInit==1){
   float h=max(0.,p.y-.45);vec3 q=p;q.xz+=vec2(sin(p.y*3.4),cos(p.y*2.8))*.12;
   float n=fbm(q*5.-vec3(0,2.,0));
@@ -148,6 +160,8 @@ float shadow(vec3 p,vec3 light){
 `;
 const scene=`#version 300 es
 ${common}${atlas}${geometry}
+uniform int uObjectCount;
+uniform vec4 uObjectPos[13];
 out vec4 outColor;
 vec3 lightSurface(vec3 p,vec3 n,vec3 rd,vec3 albedo,float rough,float metal,float material){
  vec3 result=albedo*vec3(.042,.05,.065)*(n.y*.45+.55);
@@ -213,6 +227,12 @@ void main(){
   }
   if(material>7.5){vec2 c=cells(p.xz*36.+material);float cracks=1.-smoothstep(.012,.045,c.y);float heat=noise(p*22.+material);albedo=vec3(.046,.042,.038)*(.65+textureNoise*.6);rough=.9;metal=0.;emission=vec3(1.,.086,.004)*(cracks*.8+.025)*heat*2.3*uFuel*flicker();}
   color=lightSurface(p,n,rd,albedo,rough,metal,material)+emission;
+  // Soft contact / flight shadows from the new solid fuel.
+  float fuelOcclusion=1.;
+  for(int i=0;i<13;i++){if(i>=uObjectCount)break;vec4 o=uObjectPos[i];float h=o.y-p.y;
+   if(h>-.03&&h<2.5){float spread=o.w*(.65+h*.6);float d=length(p.xz-o.xz)/max(spread,.03);fuelOcclusion*=1.-.53*exp(-d*d*2.)*exp(-h*1.5);}
+  }
+  color*=fuelOcclusion;
   if(material<.5){
    float occlusion=smoothstep(.85,1.35,length(p.xz));color*=mix(.2,1.,occlusion);
    color=mix(vec3(.0014,.0017,.0021),color,exp(-t*.09));
@@ -326,18 +346,20 @@ layout(location=1) in vec4 aInfo;
 uniform vec3 uCamera,uForward,uRight,uUp;
 uniform vec2 uResolution;
 uniform float uFocal,uShift;
-out float vLife,vDepth,vSeed;
-void main(){vec3 d=aPosition.xyz-uCamera;float depth=dot(d,uForward);vec2 xy=vec2(dot(d,uRight),dot(d,uUp))*uFocal/max(.01,depth);xy.x=(xy.x+uShift)/(uResolution.x/uResolution.y);gl_Position=vec4(xy,0.,1.);if(depth<=0.)gl_Position=vec4(3,3,3,1);gl_PointSize=clamp(aPosition.w*uResolution.y/max(depth,.1),1.,12.);vLife=aInfo.x;vDepth=depth;vSeed=aInfo.y;}`;
+out float vLife,vDepth,vSeed,vKind;
+void main(){vec3 d=aPosition.xyz-uCamera;float depth=dot(d,uForward);vec2 xy=vec2(dot(d,uRight),dot(d,uUp))*uFocal/max(.01,depth);xy.x=(xy.x+uShift)/(uResolution.x/uResolution.y);gl_Position=vec4(xy,0.,1.);if(depth<=0.)gl_Position=vec4(3,3,3,1);gl_PointSize=clamp(aPosition.w*uResolution.y/max(depth,.1),1.,12.);vLife=aInfo.x;vDepth=depth;vSeed=aInfo.y;vKind=aInfo.z;}`;
 const sparkFragment=`#version 300 es
 precision highp float;
 uniform sampler2D uScene;
 uniform vec2 uResolution;
 uniform vec3 uCamera,uForward,uRight,uUp;
 uniform float uFocal,uShift;
-in float vLife,vDepth,vSeed;
+in float vLife,vDepth,vSeed,vKind;
 out vec4 outColor;
 void main(){vec2 uv=gl_FragCoord.xy/uResolution;vec2 screen=uv*2.-1.;screen.x=screen.x*uResolution.x/uResolution.y-uShift;vec3 ray=normalize(uForward*uFocal+uRight*screen.x+uUp*screen.y);float sceneDepth=texture(uScene,uv).a*dot(ray,uForward);if(vDepth>sceneDepth+.015)discard;
  vec2 q=gl_PointCoord*2.-1.;float r=length(q);float core=exp(-r*r*8.);float a=core*(1.-smoothstep(.3,1.,r))*vLife;
- outColor=vec4(vec3(1.,.16+.3*vLife,.008+.06*vLife)*a*(2.+vSeed*5.),0.);}`;
+ if(vKind>.5){float edge=1.-smoothstep(.35,.87,max(abs(q.x+q.y*.25),abs(q.y)));float alpha=edge*vLife*.65;outColor=vec4(vec3(.18,.145,.105)*alpha,alpha);}
+ else outColor=vec4(vec3(1.,.16+.3*vLife,.008+.06*vLife)*a*(2.+vSeed*5.),0.);}`;
+I.shaderParts={common,atlas,geometry};
 I.shaders={vertex,simulation,resample,scene,volume,blur,composite,sparkVertex,sparkFragment};
 })(globalThis.Ignis=globalThis.Ignis||{});
