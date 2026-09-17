@@ -6,12 +6,27 @@ const defaults=()=>{const d=small()?(innerHeight<735?6.6:6.25):4.9;return {yaw:.
 const params=new URLSearchParams(location.search),capture=params.has('capture');
 const state={time:1.7,fuel:1,wind:.12,exposure:1,mode:'feed',paused:false,immersive:false,quality:'medium',touch:[0,1.1,0,0],shift:0,focal:1.95};
 let cameraValues=defaults(),cameraGoal={...cameraValues,target:[...cameraValues.target]},renderer=null,audio=new I.FireAudio(),raf=0,last=0,ready=false,dirty=true,contextLost=false,toastTimer=0;
-const pointers=new Map();let lastPinch=0;
+const pointers=new Map();let lastPinch=0,cameraFraming=null;
 function toast(text){$('toast').textContent=text;$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),3000);}
 function showError(error){console.error(error);$('loading').hidden=true;$('error').hidden=false;$('error-detail').textContent=error?.message||String(error);}
 function currentCamera(){return M.camera(cameraValues.yaw,cameraValues.pitch,cameraValues.distance,cameraValues.target);}
-function updateCamera(dt){const alpha=1-Math.exp(-Math.max(dt,.008)*12);let change=0;for(const k of ['yaw','pitch','distance']){const before=cameraValues[k];cameraValues[k]=M.mix(before,cameraGoal[k],alpha);change+=Math.abs(cameraValues[k]-before);}state.shift=small()?0:(innerWidth/innerHeight)*.34;return change>.00001;}
-function render(dt){const moved=updateCamera(dt);if(!state.paused){state.time+=dt;state.touch[2]*=Math.exp(-dt*1.8);state.touch[3]*=Math.exp(-dt*1.8);}if(!ready)return;world.update(state.paused?0:dt,state);renderer.world=world;audio.fuel=state.fuel+world.boost+world.flare;renderer.render(state,currentCamera(),state.paused?0:dt);updateFuelHUD();dirty=false;return moved;}
+function updateCamera(dt){
+ const alpha=1-Math.exp(-Math.max(dt,.008)*12);let change=0;
+ for(const k of ['yaw','pitch','distance']){const before=cameraValues[k];cameraValues[k]=M.mix(before,cameraGoal[k],alpha);change+=Math.abs(cameraValues[k]-before);}
+ const target=state.immersive?[0,1.28,0]:cameraGoal.target,shift=state.immersive||small()?0:(innerWidth/innerHeight)*.34;
+ if(!cameraFraming){cameraValues.target=[...target];state.shift=shift;cameraFraming={target:[...target],shift,elapsed:1.1,fromTarget:[...target],fromShift:shift};}
+ if(cameraFraming.shift!==shift||target.some((v,i)=>v!==cameraFraming.target[i])){
+  cameraFraming={target:[...target],shift,elapsed:0,fromTarget:[...cameraValues.target],fromShift:state.shift};
+ }
+ const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+ cameraFraming.elapsed=Math.min(1.1,cameraFraming.elapsed+Math.max(0,dt));
+ // Ease in briefly, then spend most of the move gently decelerating to rest.
+ const t=reduced?1:cameraFraming.elapsed/1.1,ease=t*t*(10+t*(-20+t*(15-4*t)));
+ cameraValues.target=cameraFraming.fromTarget.map((v,i)=>M.mix(v,target[i],ease));
+ state.shift=M.mix(cameraFraming.fromShift,shift,ease);
+ return change>.00001||t<1;
+}
+function render(dt){const moved=updateCamera(dt);if(!state.paused){state.time+=dt;state.touch[2]*=Math.exp(-dt*1.8);state.touch[3]*=Math.exp(-dt*1.8);}if(!ready)return;world.update(state.paused?0:dt,state);renderer.world=world;audio.fuel=state.fuel+world.boost+world.flare;renderer.render(state,currentCamera(),state.paused?0:dt);updateFuelHUD();dirty=moved;return moved;}
 function frame(timestamp){if(contextLost)return;const dt=last?Math.min((timestamp-last)/1000,.05):1/60;last=timestamp;if(!document.hidden&&(!state.paused||dirty||Math.abs(cameraValues.yaw-cameraGoal.yaw)>.0001||Math.abs(cameraValues.pitch-cameraGoal.pitch)>.0001||Math.abs(cameraValues.distance-cameraGoal.distance)>.0001))render(dt);if(!capture)raf=requestAnimationFrame(frame);}
 function togglePause(value=!state.paused){state.paused=value;document.body.classList.toggle('paused',value);$('pause').setAttribute('aria-pressed',String(value));$('pause').setAttribute('aria-label',value?'再生':'一時停止');$('pause').title=value?'再生（Space）':'一時停止（Space）';$('pause-icon').innerHTML=value?'<path d="m7 4 9 6-9 6Z"/>':'<path d="M7 4v12M13 4v12"/>';$('live-text').textContent=value?'A MOMENT, HELD STILL':'LIVE GENERATIVE FIRE';audio.setPaused(value||document.hidden);dirty=true;}
 function setMode(mode){
@@ -22,9 +37,9 @@ function setMode(mode){
  $('gesture-sub').textContent=small()?(mode==='feed'?'DRAG & RELEASE':mode==='wind'?'TOUCH THE AIR':'PINCH TO MOVE CLOSER'):'中・右ドラッグで視点回転';
  if(mode==='wind')toast('炎の近くを左右になぞると、気流が変わります。');dirty=true;
 }
-function setImmersive(value){state.immersive=value;document.body.classList.toggle('immersive',value);for(const el of document.querySelectorAll('.ui'))el.inert=value;$('restore-ui').hidden=!value;if(value){setSettings(false);$('restore-ui').focus({preventScroll:true});}else $('immersive').focus({preventScroll:true});}
+function setImmersive(value){state.immersive=value;dirty=true;document.body.classList.toggle('immersive',value);for(const el of document.querySelectorAll('.ui'))el.inert=value;$('restore-ui').hidden=!value;if(value){setSettings(false);$('restore-ui').focus({preventScroll:true});}else $('immersive').focus({preventScroll:true});}
 function setSettings(open){$('settings').hidden=!open;$('settings-toggle').setAttribute('aria-expanded',String(open));if(open)$('close-settings').focus({preventScroll:true});}
-function resetCamera(){cameraGoal=defaults();cameraValues.target=[...cameraGoal.target];dirty=true;}
+function resetCamera(){cameraGoal=defaults();dirty=true;}
 function resetAll(){state.fuel=1;state.wind=.12;state.exposure=1;state.touch=[0,1.1,0,0];for(const k of ['fuel','wind','exposure']){$(k).value=String(state[k]);$(k).dispatchEvent(new Event('input'));}resetCamera();togglePause(false);cancelFuelGesture();world.clear();renderer.reset();selectMaterial('paper');state.quality='medium';$('quality').value='medium';renderer.setQuality('medium');renderer.reset();toast('炎と視点を初期状態に戻しました。');}
 function touchWind(e,dx,dy){const rect=$('scene').getBoundingClientRect(),cam=currentCamera(),ray=M.rayAt(e.clientX-rect.left,e.clientY-rect.top,rect.width,rect.height,cam,state.shift,state.focal);const p=M.intersectPlane(cam.origin,ray,[0,1.2,0],[cam.forward[0],0,cam.forward[2]]);if(p){state.touch[0]=M.clamp(p[0],-1.2,1.2);state.touch[1]=M.clamp(p[1],.4,3.5);state.touch[2]=M.clamp(state.touch[2]+dx*.043*cam.right[0],-2.1,2.1);state.touch[3]=M.clamp(state.touch[3]+dx*.043*cam.right[2],-2.1,2.1);dirty=true;}}
 function beginPinch(){
