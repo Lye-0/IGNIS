@@ -1,0 +1,213 @@
+{
+  "browser": "Chromium 144 / ANGLE SwiftShader / WebGL 2",
+  "tests": [
+    {
+      "name": "Renderer initializes",
+      "pass": true
+    },
+    {
+      "name": "Japanese title and controls",
+      "pass": true
+    },
+    {
+      "name": "HDR framebuffer and shader status",
+      "pass": true
+    },
+    {
+      "name": "Default standard quality",
+      "pass": true
+    },
+    {
+      "name": "Animation time advances",
+      "pass": true
+    },
+    {
+      "name": "Pause freezes simulation time",
+      "pass": true
+    },
+    {
+      "name": "Pause accessible state",
+      "pass": true
+    },
+    {
+      "name": "Orbit drag direction",
+      "pass": true
+    },
+    {
+      "name": "Camera never goes below floor",
+      "pass": true
+    },
+    {
+      "name": "Zoom is bounded",
+      "pass": true
+    },
+    {
+      "name": "Pointer injects a local wind impulse",
+      "pass": true
+    },
+    {
+      "name": "Settings opens with accessible state",
+      "pass": true
+    },
+    {
+      "name": "Fuel slider updates state and label",
+      "pass": true
+    },
+    {
+      "name": "Wind slider updates state",
+      "pass": true
+    },
+    {
+      "name": "Quality low resamples without GL errors",
+      "pass": true
+    },
+    {
+      "name": "Quality high resamples without GL errors",
+      "pass": true
+    },
+    {
+      "name": "Quality ultra resamples without GL errors",
+      "pass": true
+    },
+    {
+      "name": "Quality medium resamples without GL errors",
+      "pass": true
+    },
+    {
+      "name": "Reset restores controls",
+      "pass": true
+    },
+    {
+      "name": "User action starts audio context",
+      "pass": true
+    },
+    {
+      "name": "Sound switch stops crackle scheduling",
+      "pass": true
+    },
+    {
+      "name": "Immersive mode hides UI",
+      "pass": true
+    },
+    {
+      "name": "Escape restores UI",
+      "pass": true
+    },
+    {
+      "name": "Animation remains live",
+      "pass": true
+    },
+    {
+      "name": "Renderer initializes",
+      "pass": true
+    },
+    {
+      "name": "Mobile also starts at standard quality",
+      "pass": true
+    },
+    {
+      "name": "No mobile horizontal overflow",
+      "pass": true
+    },
+    {
+      "name": "Mobile one-finger orbit direction",
+      "pass": true
+    },
+    {
+      "name": "Mobile pinch zoom",
+      "pass": true
+    },
+    {
+      "name": "Mobile settings fits viewport",
+      "pass": true
+    },
+    {
+      "name": "Renderer initializes",
+      "pass": true
+    },
+    {
+      "name": "tablet fits viewport",
+      "pass": true
+    },
+    {
+      "name": "Renderer initializes",
+      "pass": true
+    },
+    {
+      "name": "landscape fits viewport",
+      "pass": true
+    },
+    {
+      "name": "Renderer initializes",
+      "pass": true
+    },
+    {
+      "name": "Reduced motion starts paused",
+      "pass": true
+    },
+    {
+      "name": "Unsupported renderer gives a readable error",
+      "pass": true
+    },
+    {
+      "name": "No unexpected browser errors",
+      "pass": true
+    }
+  ],
+  "errors": [],
+  "info": {
+    "quality": "medium",
+    "resolution": [
+      1101,
+      688
+    ],
+    "grid": [
+      48,
+      96,
+      48
+    ],
+    "volumeSteps": 104,
+    "frame": 9,
+    "particles": 77,
+    "state": {
+      "time": 4.799666666666656,
+      "fuel": 1,
+      "wind": 0.12,
+      "exposure": 1,
+      "mode": "orbit",
+      "paused": false,
+      "immersive": false,
+      "quality": "medium",
+      "touch": [
+        0,
+        1.1,
+        0,
+        0
+      ],
+      "shift": 0.544,
+      "focal": 1.95
+    },
+    "camera": {
+      "origin": [
+        1.1190228989278452,
+        2.079814523870759,
+        5.069144143394789
+      ],
+      "forward": [
+        -0.21304815615312353,
+        -0.1522748191644834,
+        -0.9651025140409584
+      ],
+      "right": [
+        0.97649015589774,
+        0,
+        -0.21556199905087034
+      ],
+      "up": [
+        -0.03282466442420583,
+        0.9883381908276255,
+        -0.14869486190522657
+      ]
+    }
+  }
+}

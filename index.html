@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#080909">
+  <meta name="description" content="IGNIS — ただ、火を見つめる。炎、煙、熾火と熱気を鑑賞する、インタラクティブな3D作品。">
+  <title>IGNIS — ただ、火を見つめる。</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%230b0b0b'/%3E%3Cpath d='M21 5C25 15 15 17 24 23C29 18 28 15 28 15C39 31 21 40 13 31C5 23 19 19 21 5' fill='%23ec8b48'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="src/math.js"></script>
+  <script defer src="src/shaders.js"></script>
+  <script defer src="src/renderer.js"></script>
+  <script defer src="src/audio.js"></script>
+  <script defer src="src/app.js"></script>
+</head>
+<body>
+  <canvas id="scene" aria-label="立体的な薪の炎。ドラッグで視点を回転、ホイールまたはピンチで拡大。気流モードではドラッグで風を送れます。" tabindex="0"></canvas>
+  <div id="loading" class="loading" role="status"><span class="loading-ember"></span><span>火を灯しています</span></div>
+  <div id="error" class="error-card" role="alert" hidden><p class="eyebrow">RENDERING UNAVAILABLE</p><h2>炎を描画できませんでした。</h2><p id="error-detail"></p><button id="retry">再読み込み</button></div>
+  <header class="topbar ui">
+    <a class="wordmark" href="#" id="home" aria-label="IGNIS — 視点を初期位置に戻す"><svg viewBox="0 0 20 24" aria-hidden="true"><path d="M11 1C15 9 6 11 12 16C16 13 15 9 15 9C24 21 12 27 5 21C-2 15 9 10 11 1Z"/></svg><span>IGNIS</span></a>
+    <div class="edition"><span class="edition-line"></span>A STUDY OF FIRE<span class="edition-num">№ 001</span></div>
+    <button class="text-button" id="immersive" aria-label="UIを隠して鑑賞する"><span>鑑賞モード</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 3H3v4M13 3h4v4M3 13v4h4m10-4v4h-4"/></svg></button>
+  </header>
+  <main class="intro ui" aria-label="作品について">
+    <div class="eyebrow"><span class="tiny-line"></span>THE LIVING ELEMENT</div>
+    <h1>Nothing stays.<br><em>Everything burns.</em></h1>
+    <p class="intro-jp">ただ、火を見つめる。</p>
+    <p class="intro-caption">生まれ、揺らぎ、ほどけていく。<br>二度と同じかたちにならない光。</p>
+    <div class="intro-rule"></div>
+    <div class="live-label"><span class="live-dot"></span><span id="live-text">LIVE GENERATIVE FIRE</span></div>
+  </main>
+  <div id="wind-cursor" aria-hidden="true"><span></span></div>
+  <aside id="settings" class="settings ui" aria-label="炎の設定" hidden>
+    <div class="panel-heading"><span>火のある空間</span><button class="icon-button" id="close-settings" aria-label="設定を閉じる">×</button></div>
+    <label class="slider-label" for="fuel"><span>火勢</span><output id="fuel-value" for="fuel">穏やか</output></label>
+    <input id="fuel" type="range" min="0.45" max="1.55" step="0.01" value="1" aria-label="火勢">
+    <label class="slider-label" for="wind"><span>風</span><output id="wind-value" for="wind">かすか</output></label>
+    <input id="wind" type="range" min="0" max="1" step="0.01" value="0.12" aria-label="風の強さ">
+    <label class="slider-label" for="exposure"><span>明るさ</span><output id="exposure-value" for="exposure">1.00</output></label>
+    <input id="exposure" type="range" min="0.65" max="1.5" step="0.01" value="1" aria-label="明るさ">
+    <div class="panel-divider"></div>
+    <label class="select-label" for="quality"><span>描画品質</span><select id="quality"><option value="low">軽量</option><option value="medium" selected>標準</option><option value="high">高精細</option><option value="ultra">最高精細</option></select></label>
+    <p class="panel-note">煙・熱気・光は炎に合わせて変化します。<br>負荷が高い場合は品質を下げてください。</p>
+    <button id="reset" class="reset-button">初期状態に戻す <span>↺</span></button>
+  </aside>
+  <footer class="bottom ui">
+    <div class="observation"><span class="observation-index">01 /</span><div><span class="observation-title">THE HEARTH</span><span class="observation-sub">炎と、そこにある静けさ。</span></div></div>
+    <div class="controls" role="toolbar" aria-label="鑑賞操作">
+      <div class="mode-switch" role="group" aria-label="操作モード">
+        <button id="orbit-mode" class="mode active" aria-pressed="true" title="視点モード"><svg viewBox="0 0 20 20" aria-hidden="true"><ellipse cx="10" cy="10" rx="8" ry="4" transform="rotate(-30 10 10)"/><circle cx="10" cy="10" r="2"/></svg><span>視点</span></button>
+        <button id="wind-mode" class="mode" aria-pressed="false" title="気流モード"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2 7h10c5 0 5-6 1-5M2 11h14c4 0 4 5 0 5M2 15h6"/></svg><span>気流</span></button>
+      </div>
+      <span class="control-divider"></span>
+      <button class="icon-button" id="pause" aria-label="一時停止" aria-pressed="false" title="一時停止（Space）"><svg id="pause-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 4v12M13 4v12"/></svg></button>
+      <button class="icon-button" id="sound" aria-label="焚き火の音をオン" aria-pressed="false" title="音をオン"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 8v4h3l4 3V5L6 8H3Z"/><path id="sound-wave" d="m14 8 4 4m0-4-4 4"/></svg></button>
+      <button class="icon-button" id="settings-toggle" aria-label="設定を開く" aria-expanded="false" aria-controls="settings" title="設定"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h7m4 0h3M3 14h2m4 0h8"/><circle cx="12" cy="6" r="2"/><circle cx="7" cy="14" r="2"/></svg></button>
+    </div>
+    <div class="gesture"><span id="gesture-main">ドラッグで視点を動かす</span><span id="gesture-sub">SCROLL TO MOVE CLOSER</span></div>
+  </footer>
+  <button id="restore-ui" aria-label="操作を表示" hidden><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 7h4V3m10 4h-4V3M3 13h4v4m10-4h-4v4"/></svg></button>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <noscript><p class="noscript">この作品を表示するにはJavaScriptを有効にしてください。</p></noscript>
+</body>
+</html>
