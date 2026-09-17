@@ -34,7 +34,7 @@ function setMode(mode){
  state.mode=mode;document.body.classList.toggle('wind-mode',mode==='wind');document.body.classList.toggle('feed-mode',mode==='feed');
  for(const m of ['feed','orbit','wind']){$(`${m}-mode`).classList.toggle('active',m===mode);$(`${m}-mode`).setAttribute('aria-pressed',String(m===mode));}
  $('gesture-main').textContent=mode==='feed'?'素材を選んで、火の中へ':mode==='wind'?'炎の上をなぞって、風を送る':'ドラッグで視点を動かす';
- $('gesture-sub').textContent=small()?(mode==='feed'?'DRAG & RELEASE':mode==='wind'?'TOUCH THE AIR':'PINCH TO MOVE CLOSER'):'中・右ドラッグで視点回転';
+ $('gesture-sub').textContent=small()?'2本指で回転・ピンチでズーム':'中・右ドラッグで視点回転';
  if(mode==='wind')toast('炎の近くを左右になぞると、気流が変わります。');dirty=true;
 }
 function setImmersive(value){state.immersive=value;dirty=true;document.body.classList.toggle('immersive',value);for(const el of document.querySelectorAll('.ui'))el.inert=value;$('restore-ui').hidden=!value;if(value){setSettings(false);$('restore-ui').focus({preventScroll:true});}else $('immersive').focus({preventScroll:true});}
@@ -58,6 +58,9 @@ function pointerMove(e){
   const p=[...pointers.values()];if(g.action!=='pinch')beginPinch();
   const d=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y);
   if(lastPinch>0&&d>2)cameraGoal.distance=M.clamp(cameraGoal.distance*lastPinch/d,small()?4.8:2.9,8.7);
+  // Each pointer contributes half of the two-finger midpoint movement.
+  e.preventDefault();document.body.classList.add('orbit-dragging');$('wind-cursor').classList.remove('visible');
+  cameraGoal.yaw-=dx*.5*.0045;cameraGoal.pitch=M.clamp(cameraGoal.pitch+dy*.5*.0035,.035,.72);
   lastPinch=d;dirty=true;return;
  }
  const action=I.pointerInput.advance(e,g.action);
@@ -100,7 +103,7 @@ function setupUI(){
  const canvas=$('scene');canvas.addEventListener('pointerdown',pointerDown);canvas.addEventListener('pointermove',pointerMove);canvas.addEventListener('pointerup',pointerUp);canvas.addEventListener('pointercancel',pointerUp);canvas.addEventListener('lostpointercapture',e=>pointerUp(e,true));canvas.addEventListener('pointerleave',()=>$('wind-cursor').classList.remove('visible'));canvas.addEventListener('contextmenu',e=>e.preventDefault());canvas.addEventListener('auxclick',e=>e.preventDefault());canvas.addEventListener('mousedown',e=>{if(e.button===1||e.button===2)e.preventDefault();});
  canvas.addEventListener('wheel',e=>{e.preventDefault();cameraGoal.distance=M.clamp(cameraGoal.distance*Math.exp(e.deltaY*.0007),small()?4.8:2.9,8.7);dirty=true;},{passive:false});
  document.addEventListener('keydown',e=>{if(['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName))return;if(e.code==='Space'&&e.target.tagName!=='BUTTON'){e.preventDefault();togglePause();}else if(e.key==='Escape'){setSettings(false);if(state.immersive)setImmersive(false);}else if(e.key.toLowerCase()==='h')setImmersive(!state.immersive);else if(e.key.toLowerCase()==='r')resetCamera();else if(e.key==='ArrowLeft'){cameraGoal.yaw+=.09;dirty=true;e.preventDefault();}else if(e.key==='ArrowRight'){cameraGoal.yaw-=.09;dirty=true;e.preventDefault();}else if(e.key==='ArrowUp'){cameraGoal.pitch=M.clamp(cameraGoal.pitch-.05,.035,.72);dirty=true;e.preventDefault();}else if(e.key==='ArrowDown'){cameraGoal.pitch=M.clamp(cameraGoal.pitch+.05,.035,.72);dirty=true;e.preventDefault();}});
- let wasSmall=small();addEventListener('resize',()=>{if(wasSmall!==small()){wasSmall=small();resetCamera();$('gesture-sub').textContent=small()?'PINCH TO MOVE CLOSER':'中・右ドラッグで視点回転';}dirty=true;});
+ let wasSmall=small();addEventListener('resize',()=>{if(wasSmall!==small()){wasSmall=small();resetCamera();$('gesture-sub').textContent=small()?'2本指で回転・ピンチでズーム':'中・右ドラッグで視点回転';}dirty=true;});
  document.addEventListener('visibilitychange',()=>{cancelPointers();last=0;audio.setPaused(state.paused||document.hidden);dirty=true;});
  canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();contextLost=true;cancelFuelGesture();cancelAnimationFrame(raf);audio.setPaused(true);toast('描画が中断されました。復元を試みています。');});
  canvas.addEventListener('webglcontextrestored',()=>{try{renderer=new I.Renderer(canvas,{quality:state.quality});renderer.world=world;contextLost=false;last=0;dirty=true;window.__IGNIS__.renderer=renderer;audio.setPaused(state.paused||document.hidden);raf=requestAnimationFrame(frame);}catch(e){showError(e);}});
@@ -109,7 +112,7 @@ function setupUI(){
 async function start(){try{setupUI();setupFuelUI();await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));renderer=new I.Renderer($('scene'));renderer.world=world;updateCamera(1);
  // Establish the rising plume before revealing the scene; keep the loader responsive.
  for(let i=0;i<108;i++){state.time+=1/36;const u=renderer.common(state,currentCamera());renderer.simulate(1/36,u);renderer.updateParticles(1/36,state);if(i%18===17)await new Promise(resolve=>requestAnimationFrame(resolve));}
- ready=true;render(1/60);$('loading').classList.add('done');setTimeout(()=>$('loading').hidden=true,1050);$('gesture-sub').textContent=small()?'DRAG & RELEASE':'中・右ドラッグで視点回転';
+ ready=true;render(1/60);$('loading').classList.add('done');setTimeout(()=>$('loading').hidden=true,1050);$('gesture-sub').textContent=small()?'2本指で回転・ピンチでズーム':'中・右ドラッグで視点回転';
  window.__IGNIS__={state,renderer,audio,world,selectMaterial,throwFuel:toss,get selectedMaterial(){return selectedMaterial;},get camera(){return currentCamera();},get cameraGoal(){return cameraGoal;},setMode,togglePause,resetCamera,renderStep(dt=1/30){render(dt);},freeze(){cancelAnimationFrame(raf);},resume(){cancelAnimationFrame(raf);last=0;raf=requestAnimationFrame(frame);},info(){return {...renderer.info(),state:{...state},camera:currentCamera()};}};
  if(matchMedia('(prefers-reduced-motion: reduce)').matches){togglePause(true);toast('動きを抑える設定に合わせて、一時停止しています。');}if(!capture)raf=requestAnimationFrame(frame);
 }catch(e){showError(e);}}
