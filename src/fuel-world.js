@@ -102,7 +102,7 @@ class FuelWorld{
   if(b.stage==='burning'){
    b.burnAge+=dt*clamp(.88+exposure*.12+Math.abs(state.wind||0)*.07,.8,1.18);
    b.progress=clamp(b.burnAge/b.material.burn,0,1);
-   const p=b.progress,ignition=1-Math.exp(-b.burnAge/(b.kind==='wood'?2.4:.65));
+   const p=b.progress,ignition=1-Math.exp(-b.burnAge/(b.kind==='wood'?3.4:b.kind==='paper'?1.35:b.kind==='cardboard'?1.65:2.1));
    const envelope=b.kind==='paper'?Math.exp(-p*2.1)*1.05+.13:Math.pow(Math.sin(Math.PI*clamp(p*.96+.025,0,1)),.62);
    b.power=b.material.power*ignition*envelope*(1-Math.pow(p,5));b.glow=clamp(.22+b.power*.8+p*.45,0,1);b.smoke=b.material.smoke*(.35+b.power)*(1-p*.4);
    b.sparkTimer+=dt*b.material.sparks*(b.kind==='paper'?1.4:.45)*b.power;

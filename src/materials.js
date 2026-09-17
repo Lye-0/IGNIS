@@ -5,10 +5,10 @@
 'use strict';
 const M = I.math;
 const MATERIALS = Object.freeze({
-  paper: {response:Object.freeze({strength:1.10,attack:.20,decay:.36,spread:.34,lift:1.80,sparks:12,impact:.045,tone:640}),id:0, label:'くしゃくしゃの紙', short:'くしゃ紙', english:'CRUMPLED PAPER', note:'ふわりと舞い、薄い灰へ。', mass:.028, radius:.19, ignition:.75, burn:24, ember:15, power:.80, smoke:.12, sparks:7, drag:.32, restitution:.19, color:[.71,.65,.53]},
-  cardboard: {response:Object.freeze({strength:.86,attack:.32,decay:.48,spread:.32,lift:1.58,sparks:14,impact:.080,tone:510}),id:1, label:'段ボール片', short:'段ボール', english:'CORRUGATED CARD', note:'縁から焦げて、反り返る。', mass:.055, radius:.27, ignition:1.5, burn:40, ember:22, power:.64, smoke:.17, sparks:10, drag:.21, restitution:.13, color:[.35,.19,.078]},
-  twig: {response:Object.freeze({strength:.58,attack:.40,decay:.38,spread:.27,lift:1.42,sparks:21,impact:.155,tone:700}),id:2, label:'乾いた小枝', short:'小枝', english:'DRY TWIG', note:'細い枝先から、赤い熾火に。', mass:.115, radius:.37, ignition:2.5, burn:58, ember:36, power:.53, smoke:.08, sparks:17, drag:.05, restitution:.25, color:[.18,.095,.038]},
-  wood: {response:Object.freeze({strength:.43,attack:.64,decay:.64,spread:.30,lift:1.18,sparks:10,impact:.270,tone:360}),id:3, label:'割った木片', short:'木片', english:'SPLIT WOOD', note:'ゆっくり着火し、長く熱を残す。', mass:.30, radius:.34, ignition:3.8, burn:95, ember:55, power:.48, smoke:.11, sparks:23, drag:.025, restitution:.16, color:[.46,.27,.115]}
+  paper: {response:Object.freeze({strength:.50,attack:.60,decay:.36,spread:.34,lift:1.80,sparks:12,impact:.045,tone:640}),id:0, label:'くしゃくしゃの紙', short:'くしゃ紙', english:'CRUMPLED PAPER', note:'ふわりと舞い、薄い灰へ。', mass:.028, radius:.19, ignition:.75, burn:24, ember:15, power:.80, smoke:.12, sparks:7, drag:.32, restitution:.19, color:[.71,.65,.53]},
+  cardboard: {response:Object.freeze({strength:.39,attack:.85,decay:.48,spread:.32,lift:1.58,sparks:14,impact:.080,tone:510}),id:1, label:'段ボール片', short:'段ボール', english:'CORRUGATED CARD', note:'縁から焦げて、反り返る。', mass:.055, radius:.27, ignition:1.5, burn:40, ember:22, power:.64, smoke:.17, sparks:10, drag:.21, restitution:.13, color:[.35,.19,.078]},
+  twig: {response:Object.freeze({strength:.27,attack:1.10,decay:.38,spread:.27,lift:1.42,sparks:21,impact:.155,tone:700}),id:2, label:'乾いた小枝', short:'小枝', english:'DRY TWIG', note:'細い枝先から、赤い熾火に。', mass:.115, radius:.37, ignition:2.5, burn:58, ember:36, power:.53, smoke:.08, sparks:17, drag:.05, restitution:.25, color:[.18,.095,.038]},
+  wood: {response:Object.freeze({strength:.18,attack:1.50,decay:.64,spread:.30,lift:1.18,sparks:10,impact:.270,tone:360}),id:3, label:'割った木片', short:'木片', english:'SPLIT WOOD', note:'ゆっくり着火し、長く熱を残す。', mass:.30, radius:.34, ignition:3.8, burn:95, ember:55, power:.48, smoke:.11, sparks:23, drag:.025, restitution:.16, color:[.46,.27,.115]}
 });
 const add=(a,b)=>a.map((v,i)=>v+b[i]), sub=(a,b)=>a.map((v,i)=>v-b[i]), scale=(v,s)=>v.map(x=>x*s);
 function tri(out,a,b,c,tag=0) {
